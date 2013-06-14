@@ -17,6 +17,7 @@
 #include <util/delay.h>
 #include "I2C.h"
 #include "Gyro.h"
+#include "Compass.h"
 
 /*********************** FUNCTION PROTOTYPES ***********************/
 void Timer_Setup(void);
@@ -41,8 +42,7 @@ volatile char TX_Transmitting; //Flag to tell whether we are currently transmitt
 volatile uint8_t newDataFlag;
 
 /******************************* MAIN *********************************/
-int main(void)
-{
+int main(void) {
     cli(); //Disable global interrupts
     DDRB = 0xFF; //Set all pins on port B to outputs
 
@@ -55,6 +55,7 @@ int main(void)
     sei(); //Enable global interrupts
 
     Gyro_Setup();
+    Compass_Setup();
 
     //volatile gyroData gData;
     PORTB |= (1<<PB1); //Toggle PortB pin 1
@@ -62,8 +63,7 @@ int main(void)
 
     _delay_ms(1000);
 
-    for (;;) // Loop forever
-    {      
+    for (;;) {      
 	//_delay_ms(10);
 
 	while(!newDataFlag){}
@@ -80,15 +80,15 @@ int main(void)
 	//int16_t rateCopy = rateXShort;
 	SREG = status; //Finished with atomic block, so restore interrupts
 	//END ATOMIC BLOCK
-
+	/*
 	newDataFlag = 0;
-	outDec(dataCopy.xRate);
+	outDec(dataCopy.xRate+24);
 	putChar(',');
 	outDec(dataCopy.yRate);
 	putChar(',');
 	outDec(dataCopy.zRate);
 	putChar('\n');
-
+	*/
 	//outDec(rateCopy);
 	//angleXShort = tempLongAngle/574100; 
 	//outDec(angleXShort);
@@ -100,102 +100,90 @@ int main(void)
 	///outString("zRate: ");
 	//outDec(gData.zRate);
 		
-	if(testFlag) 
-	{
+	if(testFlag) {
 	    outString("\nGot I2C interrupt: ");
 	    outDec(testFlag);
 	    testFlag = 0;
-	    }
+	}
     }
 
     return(0);
 }
 
 /************************** SETUP FUNCTIONS ************************************/
-void Timer_Setup(void)
-{
-  //Set up timers
-  TIMSK1 |= (1<<OCIE1A); //Enable Output Compare 1A
-  //TIMSK1 |= (1<<OCIE1B); //Enable Output Compare 1B
-  TCCR1B=0x04;//256 Prescale. doesn't work without some prescale being set.
+void Timer_Setup(void) {
+  // Set up timers
+  TIMSK1 |= (1<<OCIE1A);  // Enable Output Compare 1A
+  //TIMSK1 |= (1<<OCIE1B);  // Enable Output Compare 1B
+  TCCR1B=0x04;  // 256 Prescale. doesn't work without some prescale being set.
 
 }
 
-void USART_Setup(void)
-{
-  UCSR0B |= (1<<RXEN0) | (1<<TXEN0); //Enable Transmit and Recieve circuits
-  UCSR0C |= (1<<UCSZ01) | (1<<UCSZ00); //Use 8 data bits
+void USART_Setup(void) {
+  UCSR0B |= (1<<RXEN0) | (1<<TXEN0);  // Enable Transmit and Recieve circuits
+  UCSR0C |= (1<<UCSZ01) | (1<<UCSZ00);  // Use 8 data bits
   
-  UBRR0H = (unsigned char) (BAUD_PRESCALE>>8); //Upper byte of baud prescale
-  UBRR0L = (unsigned char) BAUD_PRESCALE; //Lower byte of baud prescale 
+  UBRR0H = (unsigned char) (BAUD_PRESCALE>>8);  // Upper byte of baud prescale
+  UBRR0L = (unsigned char) BAUD_PRESCALE;  // Lower byte of baud prescale 
 
-  UCSR0B |= (1<<RXCIE0); //Enable Rx interrupts
+  UCSR0B |= (1<<RXCIE0);  // Enable Rx interrupts
 
-  //We don't want to enable UDRIE yet b/c whenever we are not transmitting, this interrupt would be constantly firing. Only turn it on after we start transmitting.
+  // We don't want to enable UDRIE yet b/c whenever we are not transmitting, this interrupt would be constantly firing. Only turn it on after we start transmitting.
 }
 
 
 //Function to load a character into Tx buffer, to then be sent as USART gets to them
 void putChar(char nextChar)
 {
-    //Might have to add something to turn off UDRE Interrupts while adding to buffer
+    // Might have to add something to turn off UDRE Interrupts while adding to buffer
     UCSR0B &= ~(1<<UDRIE0);
 
-    if (TX_Transmitting == 0)
-    {
-	//Tansmit first character to get us started, Tx ISR will continue once we get started
+    if (TX_Transmitting == 0) {
+	// Tansmit first character to get us started, Tx ISR will continue once we get started
 	UDR0 = nextChar;
 	TX_Transmitting = 1;
-	UCSR0B |= (1<<UDRIE0); // Enable UDRE0 Interrupt, which tell us when UDR0 is empty, and we can send the next byte
+	UCSR0B |= (1<<UDRIE0);  // Enable UDRE0 Interrupt, which tell us when UDR0 is empty, and we can send the next byte
     }
-    else
-    {
+    else {
 	TX_Buffer[(TX_BufferStart + TX_BufferSize)%BUFFER_SIZE] = nextChar; //Add the next ASCII character to the end of buffer
 	TX_BufferSize++;
     }
 
-    UCSR0B |= (1<<UDRIE0);//Re-enable Tx interrupts
+    UCSR0B |= (1<<UDRIE0);  // Re-enable Tx interrupts
 }
-
 
 //Function to print strings one character at time
 void outString(char *stringPtr)
 {
     char letter;
-    while((letter = *stringPtr++)) putChar(letter);
+    while((letter = *stringPtr++)) 
+	putChar(letter);
 }
 
-
 //Funtion to print out unsigned variables as decimals
-void outUnDec(uint16_t numToPrint)
-{
-    if(numToPrint > 9)
-    {
+void outUnDec(uint16_t numToPrint) {
+    if(numToPrint > 9) {
 	outDec(numToPrint/10); // Should this be outUnDec ?????
 	outDec(numToPrint%10);
     }
-    else
-    {
+    else {
 	putChar('0' + numToPrint);
     }
 }
 
 //Funtion to print out signed variables as decimals
-void outDec(int16_t numToPrint) 
-{
-    if (numToPrint < 0)
-    {
+void outDec(int16_t numToPrint) {
+    if (numToPrint < 0) {
 	putChar('-');
 	numToPrint =  - numToPrint;
     }
-    outUnDec((uint16_t)numToPrint);
+    outUnDec((uint16_t)numToPrint); // Unnecessary cast ??
 }
 
 /********************   ISRs ***********************************/
 //Interrupt service routine for OC1A
 //We are using this to turn on and off the LED
-ISR(TIMER1_COMPA_vect)
-{
+ISR(TIMER1_COMPA_vect) {
     PORTB |= (1<<PB0); //PortB pin1 on
     OCR1A += counts_control;
     //rateXShort = gData.xRate - X_ZERO_RATE;
@@ -207,8 +195,7 @@ ISR(TIMER1_COMPA_vect)
 
 
 //Interrupt Service Routine for Rx line on USART
-ISR(USART_RX_vect)
-{
+ISR(USART_RX_vect) {
   //As of right now, we have no check for a full buffer
   
   RX_Buffer[RX_BufferStart + RX_BufferSize] = UDR0; //Put new byte in next available element of array
@@ -216,28 +203,22 @@ ISR(USART_RX_vect)
   RX_BufferSize++; //Stack of data in buffer has increased by 1
 }
 
-//Interrupt Service Routine for Tx line on USART
-ISR(USART_UDRE_vect)
-{
-
-    //Wrap around to beginning of buffer if it gets to the end
-    if (TX_BufferStart >= BUFFER_SIZE)
-    {
+// Interrupt Service Routine for Tx line on USART
+ISR(USART_UDRE_vect) {
+    // Wrap around to beginning of buffer if it gets to the end
+    if (TX_BufferStart >= BUFFER_SIZE) {
 	TX_BufferStart = 0;
     }
   
     // PutChar function should have already put first character into UDR0. Once that is done being transmitted, we keep loading the next character from the 
     // buffer until there are no more characters to send (TX_Buffer_Size == 0)
-    if(TX_BufferSize == 0)
-    {
+    if(TX_BufferSize == 0) {
 	TX_Transmitting = 0;
 	UCSR0B &= ~(1<<UDRIE0); // Turn off UDRE0 so that it isn't constantly firing while we aren't transmitting anything.
     }
-    else
-    {
+    else {
 	UDR0 = TX_Buffer[TX_BufferStart];
 	TX_BufferStart++;
 	TX_BufferSize--;
     }
-    
 }
