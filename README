@@ -1,0 +1,7 @@
+Basic functionality of what will eventually be a quad-rotor drone. Runs on an
+8-bit AVR Atmega48, connected to a mems gyroscope, acclerometer and digital
+compass. The AVR reads data from each of the sensors over I2C, and integrates
+it to obtain position and orientation informations. For debugging, it can write
+data back to a PC over UART. All communications are interrupt driven.
+
+Code is all written in C, and compiled using the avr-gcc toolchain.
