@@ -1,7 +1,4 @@
-/*
-
-DESCRIPRION
-
+/* Interrupt driven I2C implementation supporting multi-byte reads and writes.
  */
 
 #ifndef I2C_H

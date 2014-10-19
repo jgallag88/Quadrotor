@@ -13,11 +13,6 @@ void Gyro_Setup() {
 		       0x00}; 
     I2C_WriteReg(GYRO_ADDR, CTRL_REG1, value, 5);
     _delay_ms(250);
-
-    //value = 0;
-    //I2C_ReadReg(GYRO_ADDR, CTRL_REG1, &value, 2);
-    //_delay_ms(250);
-    //testFlag = value >> 8;
 }
 
 void readGyroData(volatile gyroData* gData) {

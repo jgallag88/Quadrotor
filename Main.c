@@ -1,5 +1,10 @@
-//Just trying to turn an LED on and off using PWM with a pulsewidth defined by an analog input
-//Also, implement USART using interrupts and a circular buffer
+/* John Gallagher - jgallag88 _at_ gmail
+ *
+ * Basic communications for a quadcopter. The AVR reads angular velocity data
+ * and acceleration from a digital gyroscope and accelerometer using I2C, and
+ * integrates the data to get approximate position and orientation information.
+ * For now, the output is read back over UART for analysis and testing.
+ */
 
 /************************* DEFINITIONS ********************************/
 //#define F_CPU 20000000  //This is now defined in makefile to prevent us from having to define it in multiple source files
@@ -59,7 +64,6 @@ int main(void) {
 
     //volatile gyroData gData;
     PORTB |= (1<<PB1); //Toggle PortB pin 1
-    outString("\n\nHello World!"); //Test our outString function
 
     _delay_ms(1000);
     
@@ -71,47 +75,36 @@ int main(void) {
     outString(CompassID);
 
     for (;;) {      
-	//_delay_ms(10);
+        // Every so often, write out new data. This can be imprecise because it
+        // is only used for transmitting data. All critical timing for integration
+        // calculations is done using timers and interrupts.
+	_delay_ms(10);
 
 	while(!newDataFlag){}
 
 	//BEGIN ATOMIC BLOCK
-	//Need atomic block, so store status reg and disable interrputs
+	// Need atomic block, so store status reg and disable interrputs so that we 
+        // can copy 32-value without it getting trashed by ISR mid-copy.
 	uint8_t status = SREG;
 	cli();
 	gyroData dataCopy = gData;
-	//uint8_t checkFlag = badDataFlag;
-	//Need to copy this data beforehand. Else value will change in ISR during division, and we will get garbage result
-	//int32_t tempLongAngle = angleXLong; 
-	//if(badDataFlag != checkFlag) { outString("BadData");} //Data got screwed up by ISR
-	//int16_t rateCopy = rateXShort;
-	SREG = status; //Finished with atomic block, so restore interrupts
+	int32_t tempLongAngle = angleXLong; 
+	int16_t rateCopy = rateXShort;
+	SREG = status; // Finished with atomic block, so restore interrupts
 	//END ATOMIC BLOCK
-	/*
-	newDataFlag = 0;
-	outDec(dataCopy.xRate+24);
-	putChar(',');
-	outDec(dataCopy.yRate);
-	putChar(',');
-	outDec(dataCopy.zRate);
-	putChar('\n');
-	*/
-	//outDec(rateCopy);
-	//angleXShort = tempLongAngle/574100; 
-	//outDec(angleXShort);
-	//int32_t foo = (angleXLong*250/(32768*100));
-	//angleXShort = (int16_t)foo;
-	//putChar(0x0A); //LF
-	//outString("yRate: ");
-	//outDec(gData.yRate);
-	///outString("zRate: ");
-	//outDec(gData.zRate);
+
+        // Write out integrated angular velocity over UART
+	outDec(rateCopy);
+	angleXShort = tempLongAngle/574100; 
+	outDec(angleXShort);
+	int32_t foo = (angleXLong*250/(32768*100));
+	angleXShort = (int16_t)foo;
+	putChar(0x0A); //LF
+	outString("yRate: ");
+	outDec(gData.yRate);
+	/outString("zRate: ");
+	outDec(gData.zRate);
 		
-	if(testFlag) {
-	    outString("\nGot I2C interrupt: ");
-	    outDec(testFlag);
-	    testFlag = 0;
-	}
     }
 
     return(0);
@@ -193,8 +186,8 @@ void outDec(int16_t numToPrint) {
 ISR(TIMER1_COMPA_vect) {
     PORTB |= (1<<PB0); //PortB pin1 on
     OCR1A += counts_control;
-    //rateXShort = gData.xRate - X_ZERO_RATE;
-    //angleXLong += gData.xRate - X_ZERO_RATE;
+    rateXShort = gData.xRate - X_ZERO_RATE;
+    angleXLong += gData.xRate - X_ZERO_RATE;
     newDataFlag=1;
     readGyroData(&gData);
     PORTB &= ~(1<<PB0); //PortB pin0 off
