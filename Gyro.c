@@ -20,7 +20,7 @@ void Gyro_Setup() {
     //testFlag = value >> 8;
 }
 
-void readGyroData(volatile gyroData* data) {
-    I2C_ReadReg(GYRO_ADDR, OUT_X_L, (uint8_t*)(data), 6);
+void readGyroData(volatile gyroData* gData) {
+    I2C_ReadReg(GYRO_ADDR, OUT_X_L, (uint8_t*)(gData), 6);
 }
 

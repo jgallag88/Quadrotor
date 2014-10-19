@@ -1,17 +1,17 @@
-//Functions to use AVR as I2C master.  For now, only support reads and writes of a single byte.
+// Functions to use AVR as I2C master. Supports multi-byte read/writes.
 
-#define F_SLC 400000 //I2C clock frequency
+#define F_SLC 400000 // I2C clock frequency
 #define SLA_W 0
 #define SLA_R 1
 
-#define START 0x08 //status: START condition has been transmitted
-#define RESTART 0x10 //status: REPEATED START condition has been transmitted
-#define SLA_W_ACK 0x18 //status: transmitted SLA+W, recieved ACK
-#define SLA_R_ACK 0x40 //status: transmitted SLA+R, recieved ACK
-#define DATA_R_ACK 0x50 //status: data recieved, returned ACK
-#define DATA_R_NACK 0x58 //status: data recieved, returned NACK
-#define DATA_W_ACK 0x28 //status: transmitted data, recieved ACK
-#define DATA_W_NACK 0x30 //status: transmitted data, recieved NACK
+#define START 0x08  // Status: START condition has been transmitted
+#define RESTART 0x10  // Status: REPEATED START condition has been transmitted
+#define SLA_W_ACK 0x18  // Status: transmitted SLA+W, recieved ACK
+#define SLA_R_ACK 0x40  // Status: transmitted SLA+R, recieved ACK
+#define DATA_R_ACK 0x50  // Status: data recieved, returned ACK
+#define DATA_R_NACK 0x58  // Status: data recieved, returned NACK
+#define DATA_W_ACK 0x28  // Status: transmitted data, recieved ACK
+#define DATA_W_NACK 0x30  // Status: transmitted data, recieved NACK
 
 #include <avr/io.h>
 #include <avr/interrupt.h>

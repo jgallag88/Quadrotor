@@ -28,16 +28,16 @@ void outUnDec(uint16_t);
 void outDec(int16_t);
 
 /*************************   GLOBAL VARIABLES   ********************/
-volatile gyroData gData = {0, 0, 0};
-volatile int16_t rateXShort;
-volatile int32_t angleXLong = 0; //Long version, to preserve accuracy
-volatile int16_t angleXShort = 0; //Truncated version, for math, printing
-uint16_t total_counts, counts_control; //This is the total number of counts neccesary to get desired control PWM frequency 
-volatile char RX_Buffer[BUFFER_SIZE]; //Buffer to hold recieved characters
-volatile char TX_Buffer[BUFFER_SIZE]; //Buffer to hold characters to be transmitted
-volatile unsigned char RX_BufferSize = 0, TX_BufferSize = 0; //These tell us how many characters we have in the buffer
-volatile unsigned char RX_BufferStart = 0, TX_BufferStart = 0; //These tell us where we start in the buffer. From Start to Start + Size is good data, rest is garbage.
-volatile char TX_Transmitting; //Flag to tell whether we are currently transmitting anything
+static volatile gyroData gData = {0, 0, 0};
+static volatile int16_t rateXShort;
+static volatile int32_t angleXLong = 0; //Long version, to preserve accuracy
+static volatile int16_t angleXShort = 0; //Truncated version, for math, printing
+static uint16_t total_counts, counts_control; //This is the total number of counts neccesary to get desired control PWM frequency 
+static volatile char RX_Buffer[BUFFER_SIZE]; //Buffer to hold recieved characters
+static volatile char TX_Buffer[BUFFER_SIZE]; //Buffer to hold characters to be transmitted
+static volatile unsigned char RX_BufferSize = 0, TX_BufferSize = 0; //These tell us how many characters we have in the buffer
+static volatile unsigned char RX_BufferStart = 0, TX_BufferStart = 0; //These tell us where we start in the buffer. From Start to Start + Size is good data, rest is garbage.
+static volatile char TX_Transmitting; //Flag to tell whether we are currently transmitting anything
 
 volatile uint8_t newDataFlag;
 
@@ -62,6 +62,13 @@ int main(void) {
     outString("\n\nHello World!"); //Test our outString function
 
     _delay_ms(1000);
+    
+    char CompassID[4] = {0};
+    CompassID[3] = '\0'; // Null terminate
+    readCompassData((uint8_t*)CompassID);
+    _delay_ms(30);
+    outString("Compass ID: ");
+    outString(CompassID);
 
     for (;;) {      
 	//_delay_ms(10);
@@ -165,7 +172,7 @@ void outUnDec(uint16_t numToPrint) {
     if(numToPrint > 9) {
 	outDec(numToPrint/10); // Should this be outUnDec ?????
 	outDec(numToPrint%10);
-    }
+   }
     else {
 	putChar('0' + numToPrint);
     }
